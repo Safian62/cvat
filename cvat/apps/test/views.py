@@ -9,6 +9,7 @@ from cvat.apps.engine.permissions import TaskPermission
 
 
 class TaskAnnotationStatsView(APIView):
+    detail = True
     def get(self, request, task_id):
         task = get_object_or_404(Task, pk=task_id)
 
