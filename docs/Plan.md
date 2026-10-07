@@ -2,48 +2,35 @@
 
 ## Approach
 
-Implement annotation analytics inside a new Django app named 	est.
+Add a small Django endpoint under `cvat.apps.test` that reads CVAT's labeled
+shapes, enforces CVAT task access, and groups counts by label. Add a Task-only
+analytics view that requests those counts, draws a bar chart, and supports
+filtering by shape type. Keep the existing Project/Job plugin and placeholder
+behavior.
 
-The implementation order is:
+## Decision record
 
-1. Create the required assessment plan and commit it first.
-2. Start CVAT locally and prepare a task with annotation data.
-3. Inspect CVAT's existing annotation and label models.
-4. Implement a backend API that reads annotations from the database and returns counts grouped by label/class.
-5. Add a web interface page that calls the API and displays the counts as a graph.
-6. Handle loading, no-data, and failed-request states.
-7. Verify CVAT authentication and task-access permissions.
-8. Define and measure one API performance target using five measurements.
-9. Add one useful filter/grouping feature beyond the basic class count.
-10. If time permits, integrate WebSocket updates and reconnect handling.
-11. Complete Objectives and Definition of Done documentation.
-12. Record the final walkthrough and submit a PR from dev-test01 to the main branch of my fork.
+- **Chosen:** Reuse CVAT's `LabeledShape`, `TaskPermission`, existing React
+  analytics route, Chart.js dependency, and DRF infrastructure. This avoids
+  duplicate data/auth systems and keeps the change limited to the assessment.
+- **Rejected:** New storage, authentication, chart dependencies, or changes to
+  the Project/Job analytics design. These add complexity without helping the
+  requested Task count view.
+- **Trade-off:** The endpoint aggregates on request. This keeps counts current
+  and avoids cache invalidation, at the cost of a database aggregation per
+  request. A five-request local sample is recorded in `Objectives.md`; it is a
+  small-task baseline, not a large-dataset performance claim.
+- **Intentionally skipped:** WebSocket/live updates and reconnect behavior.
+  They would introduce lifecycle and event-integration risk beyond the
+  assessment's working floor requirements; the graph refreshes when its page
+  is loaded or its filter changes.
 
-## Time Allocation
+## Verification
 
-- Plan and environment: 15 minutes
-- CVAT startup and sample data: 30–45 minutes
-- Backend API: 60–75 minutes
-- Frontend page and graph: 60 minutes
-- Empty/error handling and access control: 30–40 minutes
-- Performance measurement and filter: 30–40 minutes
-- WebSocket and reconnect: up to 60 minutes if the core feature is stable
-- Documentation, testing, Loom and PR: remaining time
-
-## Priority
-
-Items 1–4 are the minimum working feature and will be completed before WebSocket work.
-
-If time becomes limited, WebSocket functionality will be reduced or skipped rather than compromising the database API, frontend graph, error handling, or authentication/access control.
-
-## Decision Record
-
-The backend will use CVAT's existing database models and permission mechanisms rather than introducing duplicate annotation or authentication logic.
-
-The frontend will reuse existing CVAT UI patterns and dependencies where possible to minimize implementation and dependency cost.
-
-WebSocket work will use CVAT's existing event/WebSocket infrastructure where practical instead of introducing a separate real-time system.
-
-## What May Be Skipped
-
-If the core feature or required tests take longer than expected, optional WebSocket enhancements and additional UI polish will be skipped first.
+The API and Task analytics UI were manually exercised with Task 2. Django's
+system check and Python syntax validation pass; frontend diagnostics report no
+errors. The local unauthenticated request was refused (HTTP 401), and an
+authenticated request as `safian` returned counts. The implementation checks
+`TaskPermission` for task access; a separate authenticated non-member denial
+case was not exercised. See `Objectives.md` and `Definition of Done.md` for
+measurements and evidence.
